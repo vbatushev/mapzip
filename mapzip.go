@@ -1,20 +1,20 @@
 package main
 
 import (
-	"archive/zip"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/mholt/archiver"
 )
 
 var (
-	version      = "1.0"
+	version      = "1.1"
 	appVersion   = "mapzip " + version
 	startPath    = "./"
 	prefixFolder = ""
@@ -22,7 +22,6 @@ var (
 )
 
 func init() {
-	log.SetOutput(os.Stdout)
 	version := flag.Bool("v", false, "version")
 	vers := flag.Bool("version", false, "version")
 	flag.StringVar(&prefixFolder, "prefix", "", "Префикс искомой папки")
@@ -40,6 +39,8 @@ func init() {
 }
 
 func main() {
+	fmt.Println(appVersion)
+
 	targetPath = filepath.Join(startPath, "target")
 
 	files, err := ioutil.ReadDir(targetPath)
@@ -63,9 +64,7 @@ func zipFolder(fldName string) error {
 			return err
 		}
 	}
-	absPath, _ := filepath.Abs(path.Join(targetPath, fldName))
-	zfs := getZipFilesSlice(absPath)
-	err := zipFiles(pathZip, absPath, zfs)
+	err := compress(path.Join(targetPath, fldName), pathZip)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -73,19 +72,23 @@ func zipFolder(fldName string) error {
 	return nil
 }
 
-func getZipFilesSlice(absPath string) (result []string) {
-	result = make([]string, 0)
-	filepath.Walk(absPath, func(p string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
-			if checkPath(f, p) {
-				result = append(result, p)
-			} else {
-				fmt.Println("Exclude", p)
+func compress(rootPath string, pathZip string) error {
+	absPath, _ := filepath.Abs(rootPath)
+	ff, err := ioutil.ReadDir(absPath)
+	if err == nil {
+		zfs := make([]string, 0)
+		for _, zf := range ff {
+			fname := path.Join(absPath, zf.Name())
+			if checkPath(zf, fname) {
+				zfs = append(zfs, fname)
 			}
 		}
-		return nil
-	})
-	return result
+		zerr := archiver.Archive(zfs, pathZip)
+		if zerr != nil {
+			return zerr
+		}
+	}
+	return nil
 }
 
 func checkPath(f os.FileInfo, p string) bool {
@@ -99,45 +102,4 @@ func checkPath(f os.FileInfo, p string) bool {
 		return false
 	}
 	return true
-}
-
-func zipFiles(filename string, fld string, files []string) error {
-	newZipFile, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer newZipFile.Close()
-
-	zipWriter := zip.NewWriter(newZipFile)
-	defer zipWriter.Close()
-
-	for _, file := range files {
-		zipfile, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		info, err := zipfile.Stat()
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-
-		header.Name = strings.TrimPrefix(file, fld)
-
-		header.Method = zip.Deflate
-
-		writer, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-		if _, err = io.Copy(writer, zipfile); err != nil {
-			return err
-		}
-		zipfile.Close()
-	}
-	return nil
 }
