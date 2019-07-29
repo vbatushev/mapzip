@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	version      = "1.1"
+	version      = "1.2"
 	appVersion   = "mapzip " + version
 	startPath    = "./"
 	prefixFolder = ""
@@ -93,6 +93,9 @@ func compress(rootPath string, pathZip string) error {
 
 func checkPath(f os.FileInfo, p string) bool {
 	if filepath.Ext(f.Name()) == ".zip" {
+		return false
+	}
+	if f.IsDir() && strings.HasPrefix(f.Name(), "data") {
 		return false
 	}
 	if strings.Contains(p, "META-INF") {
