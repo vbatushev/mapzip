@@ -57,6 +57,8 @@ func main() {
 			copyFolder(f.Name())
 		}
 	}
+
+	fmt.Println("Копирование плеера закончено.")
 }
 
 func copyFolder(fldName string) error {
@@ -121,13 +123,11 @@ func checkPath(f os.FileInfo, p string) bool {
 	if filepath.Ext(f.Name()) == ".zip" {
 		return false
 	}
-	if f.IsDir() && strings.HasPrefix(f.Name(), "data") {
-		return false
-	}
-	if strings.Contains(p, "META-INF") {
-		return false
-	}
-	if strings.Contains(p, "WEB-INF") {
+
+	if f.IsDir() {
+		if f.Name() == "images" || f.Name() == "map" {
+			return true
+		}
 		return false
 	}
 	return true
