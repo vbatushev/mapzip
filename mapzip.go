@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	version      = "1.5.0"
+	version      = "1.5.1"
 	appVersion   = "mapzip " + version
 	startPath    = "./"
 	prefixFolder = ""
@@ -32,15 +32,9 @@ type PomStruct struct {
 	Version    string `xml:"version"`
 }
 
-// type ProjectStruct struct {
-// 	GroupID string `xml:"groupId"`
-// 	Version string `xml:"version"`
-// }
-
 func init() {
 	version := flag.Bool("v", false, "version")
 	vers := flag.Bool("version", false, "version")
-	// flag.StringVar(&prefixFolder, "prefix", "", "Префикс искомой папки")
 	flag.StringVar(&startPath, "start", "./", "Стартовый путь")
 	flag.StringVar(&commonFolder, "target", commonFolder, "Путь для копирования")
 	flag.Parse()
@@ -60,9 +54,6 @@ func init() {
 
 	prefixFolder = pom.ArtifactID + "-"
 
-	// if strings.TrimSpace(prefixFolder) == "" {
-	// 	log.Fatal("Не указан префикс искомой папки")
-	// }
 }
 
 func main() {
@@ -109,8 +100,8 @@ func copyFolder(fldName string) error {
 		}
 	}
 
-	// versionEngineValue := strings.TrimPrefix(fldName, prefixFolder)
-	err = ioutil.WriteFile(filepath.Join(commonFolder, "version.txt"), []byte(pom.Version), 0644)
+	outINI := fmt.Sprintf("[main]\ntype=imap\nversion=%s", pom.Version)
+	err = ioutil.WriteFile(filepath.Join(commonFolder, "config.ini"), []byte(outINI), 0644)
 	if err != nil {
 		fmt.Println("Error", err)
 	}
