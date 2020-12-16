@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
@@ -15,18 +16,31 @@ import (
 )
 
 var (
-	version      = "1.3"
+	version      = "1.5.0"
 	appVersion   = "mapzip " + version
 	startPath    = "./"
 	prefixFolder = ""
 	targetPath   string
-	commonFolder = "D:\\vital\\Documents\\Drofa\\Projects\\drofa.map\\Карты\\common"
+	// commonFolder = "D:\\vital\\Documents\\Drofa\\Projects\\drofa.map\\Карты\\common"
+	commonFolder string
+	pom          PomStruct
 )
+
+// PomStruct - Структура pom.xml
+type PomStruct struct {
+	ArtifactID string `xml:"artifactId"`
+	Version    string `xml:"version"`
+}
+
+// type ProjectStruct struct {
+// 	GroupID string `xml:"groupId"`
+// 	Version string `xml:"version"`
+// }
 
 func init() {
 	version := flag.Bool("v", false, "version")
 	vers := flag.Bool("version", false, "version")
-	flag.StringVar(&prefixFolder, "prefix", "", "Префикс искомой папки")
+	// flag.StringVar(&prefixFolder, "prefix", "", "Префикс искомой папки")
 	flag.StringVar(&startPath, "start", "./", "Стартовый путь")
 	flag.StringVar(&commonFolder, "target", commonFolder, "Путь для копирования")
 	flag.Parse()
@@ -36,9 +50,19 @@ func init() {
 		os.Exit(0)
 	}
 
-	if strings.TrimSpace(prefixFolder) == "" {
-		log.Fatal("Не указан префикс искомой папки")
+	if commonFolder == "" {
+		commonFolder = filepath.Join(startPath, "dist")
 	}
+
+	if err := getPOM(); err != nil {
+		log.Fatal(err)
+	}
+
+	prefixFolder = pom.ArtifactID + "-"
+
+	// if strings.TrimSpace(prefixFolder) == "" {
+	// 	log.Fatal("Не указан префикс искомой папки")
+	// }
 }
 
 func main() {
@@ -61,11 +85,36 @@ func main() {
 	fmt.Println("Копирование плеера закончено.")
 }
 
-func copyFolder(fldName string) error {
-	err := removeFolderContents(commonFolder)
+func getPOM() error {
+	xmlFile := filepath.Join(startPath, "pom.xml")
+	byteValue, err := ioutil.ReadFile(xmlFile)
 	if err != nil {
 		return err
 	}
+
+	err = xml.Unmarshal(byteValue, &pom)
+	return err
+}
+
+func copyFolder(fldName string) error {
+	err := removeFolderContents(commonFolder)
+	if err != nil {
+		sourceinfo, err := os.Stat(filepath.Dir(commonFolder))
+		if err != nil {
+			return err
+		}
+		err = os.MkdirAll(commonFolder, sourceinfo.Mode())
+		if err != nil {
+			return err
+		}
+	}
+
+	// versionEngineValue := strings.TrimPrefix(fldName, prefixFolder)
+	err = ioutil.WriteFile(filepath.Join(commonFolder, "version.txt"), []byte(pom.Version), 0644)
+	if err != nil {
+		fmt.Println("Error", err)
+	}
+
 	absPath, _ := filepath.Abs(path.Join(targetPath, fldName))
 	ff, err := ioutil.ReadDir(absPath)
 	if err == nil {
